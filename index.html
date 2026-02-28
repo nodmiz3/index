@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<title>JSON作成・フォルダダウンロードツール</title>
+	<!-- JSZip CDN -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+	<style>
+		body { font-family: sans-serif; margin: 2em; }
+		label { display: block; margin-top: 1em; }
+		textarea { width: 100%; height: 100px; }
+		#json-output { background: #f4f4f4; padding: 1em; margin-top: 1em; }
+	</style>
+</head>
+<body>
+	<h1>JSON作成・フォルダダウンロードツール</h1>
+	<form id="json-form">
+		<label>名前: <input type="text" name="name" required></label>
+		<label>年齢: <input type="number" name="age" required></label>
+		<label>メール: <input type="email" name="email"></label>
+        <label>スクラッチのアカウント: <input type="email" name="scratch_email"></label>
+		<button type="button" onclick="generateJSON()">JSON生成</button>
+		<button type="button" onclick="downloadJSON()">ダウンロード</button>
+	</form>
+	<div id="json-output"></div>
+
+	<hr>
+	<h2>ファイルインポート & フォルダ(zip)ダウンロード</h2>
+	<input type="file" id="import-file" multiple>
+	<button type="button" onclick="downloadFolderZip()">フォルダ(zip)ダウンロード</button>
+	<ul id="import-list"></ul>
+
+	<script>
+	let lastJson = '';
+	let importedFiles = [];
+
+	function generateJSON() {
+		const form = document.getElementById('json-form');
+		const data = {
+			name: form.name.value,
+			age: form.age.value,
+			email: form.email.value,
+			scratch_email: form.scratch_email.value
+		};
+		lastJson = JSON.stringify(data, null, 2);
+		document.getElementById('json-output').textContent = lastJson;
+	}
+
+	function downloadJSON() {
+		if (!lastJson) generateJSON();
+		const blob = new Blob([lastJson], {type: 'application/json'});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = 'data.json';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
+	// ファイルインポート処理
+	document.getElementById('import-file').addEventListener('change', function(e) {
+		importedFiles = Array.from(e.target.files);
+		const list = document.getElementById('import-list');
+		list.innerHTML = '';
+		importedFiles.forEach(f => {
+			const li = document.createElement('li');
+			li.textContent = f.name + ' (' + f.size + ' bytes)';
+			list.appendChild(li);
+		});
+	});
+
+	// zipフォルダダウンロード
+	async function downloadFolderZip() {
+		const zip = new JSZip();
+		// インポートファイルをzipに追加
+		for (const file of importedFiles) {
+			zip.file(file.name, file);
+		}
+		// 生成済みJSONも含める
+		if (lastJson) {
+			zip.file('data.json', lastJson);
+		}
+		const content = await zip.generateAsync({type: 'blob'});
+		const url = URL.createObjectURL(content);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = 'folder.zip';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+	</script>
+</body>
+</html>
